@@ -1,0 +1,19 @@
+{
+  "name": "inter-ug-kabaddi-championship",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mobile-first live tournament management system for the Inter UG Kabaddi Championship.",
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "install:all": "npm install --prefix server && npm install --prefix client",
+    "build": "npm run build --prefix client",
+    "test": "npm test --prefix server",
+    "start": "npm start --prefix server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  }
+}

@@ -6,8 +6,8 @@ import { createHttpError } from '../utils/httpError.js';
 import { requireDatabaseConnection } from './databaseGuard.js';
 import { applyScoreCorrection, reverseMatchEvent } from './eventEngine.js';
 
-const reversibleTypes = ['RAID_TOUCH', 'RAID_BONUS', 'EMPTY_RAID', 'TACKLE', 'SUPER_TACKLE', 'ALL_OUT', 'TECHNICAL_POINT', 'SCORE_CORRECTION'];
-const stateFields = ['status', 'currentHalf', 'currentRaidingTeam', 'currentRaider', 'raidNumber', 'teamAScore', 'teamBScore', 'teamAPlayersOnCourt', 'teamBPlayersOnCourt', 'teamAOutPlayers', 'teamBOutPlayers', 'teamARevivalQueue', 'teamBRevivalQueue', 'timerState', 'startedAt'];
+const reversibleTypes = ['RAID_TOUCH', 'RAID_BONUS', 'EMPTY_RAID', 'TACKLE', 'SUPER_TACKLE', 'ALL_OUT', 'TECHNICAL_POINT', 'SCORE_CORRECTION', 'SUBSTITUTION'];
+const stateFields = ['status', 'currentHalf', 'currentRaidingTeam', 'currentRaider', 'raidNumber', 'teamAScore', 'teamBScore', 'teamAPlayersOnCourt', 'teamBPlayersOnCourt', 'teamAOutPlayers', 'teamBOutPlayers', 'teamASubstitutedOutPlayers', 'teamBSubstitutedOutPlayers', 'teamARevivalQueue', 'teamBRevivalQueue', 'timerState', 'startedAt'];
 const snapshot = (match) => Object.fromEntries(stateFields.map((field) => [field, match[field]]));
 const defaults = { raidingTeam: null, defendingTeam: null, raiderId: null, tacklerId: null, assistPlayers: [], touchedPlayers: [], playerOutIds: [], playerRevivedIds: [], bonusPoint: 0, raidPoints: 0, tacklePoints: 0, technicalPoints: 0, allOutPoints: 0 };
 

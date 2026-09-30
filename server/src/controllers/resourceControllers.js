@@ -62,6 +62,7 @@ export const createScoringController = (service = scoringService) => ({
   raid: action(async (request, response) => sendMatchAction(request, response, await service.raid(request.params.id, request.body, request.auth.sub))),
   tackle: action(async (request, response) => sendMatchAction(request, response, await service.tackle(request.params.id, request.body, request.auth.sub))),
   technicalPoint: action(async (request, response) => sendMatchAction(request, response, await service.technicalPoint(request.params.id, request.body, request.auth.sub))),
+  substitute: action(async (request, response) => sendMatchAction(request, response, await service.substitute(request.params.id, request.body, request.auth.sub))),
 });
 
 export const createAuditController = (service = auditService) => ({

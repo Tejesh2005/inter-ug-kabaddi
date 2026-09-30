@@ -25,6 +25,7 @@ const fieldsForSide = (side) => ({
   court: `team${side}PlayersOnCourt`,
   out: `team${side}OutPlayers`,
   queue: `team${side}RevivalQueue`,
+  substituted: `team${side}SubstitutedOutPlayers`,
 });
 
 const opposingSide = (side) => (side === 'A' ? 'B' : 'A');
@@ -37,6 +38,7 @@ const normalizeMatch = (source) => {
     match[fields.court] = ids(match[fields.court]);
     match[fields.out] = ids(match[fields.out]);
     match[fields.queue] = ids(match[fields.queue]);
+    match[fields.substituted] = ids(match[fields.substituted]);
   }
   match.teamA = id(match.teamA);
   match.teamB = id(match.teamB);
@@ -78,7 +80,9 @@ const resetAllOutTeam = (match, side, lineups) => {
   const teamId = teamForSide(match, side);
   const lineup = lineups.find((candidate) => id(candidate.teamId) === teamId);
   if (!lineup) throw createHttpError(409, 'Match lineup is missing for all-out reset');
-  match[fields.court] = ids(lineup.startingSeven);
+  match[fields.court] = match[fields.substituted].length
+    ? unique([...match[fields.court], ...match[fields.out]])
+    : ids(lineup.startingSeven);
   match[fields.out] = [];
   match[fields.queue] = [];
 };
@@ -132,6 +136,8 @@ export const startMatch = ({ match: source, lineups, settings }) => {
   match.teamBOutPlayers = [];
   match.teamARevivalQueue = [];
   match.teamBRevivalQueue = [];
+  match.teamASubstitutedOutPlayers = [];
+  match.teamBSubstitutedOutPlayers = [];
   match.raidNumber = 1;
   match.startedAt = new Date();
   match.timerState = { status: 'stopped', remainingMilliseconds: settings.halfDuration * 60_000, startedAt: null, pausedAt: null };
@@ -283,4 +289,38 @@ export const applyTechnicalPoint = ({ match: source, payload }) => {
   };
 };
 
-export const scoringEngine = { startMatch, applyRaid, applyTackle, applyTechnicalPoint };
+export const applySubstitution = ({ match: source, lineups, payload }) => {
+  requireLiveMatch(source);
+  const before = normalizeMatch(source);
+  const match = clone(before);
+  const side = sideForTeam(match, payload.teamId);
+  const fields = fieldsForSide(side);
+  const outgoingPlayerId = id(payload.outgoingPlayerId);
+  const incomingPlayerId = id(payload.incomingPlayerId);
+  if (!outgoingPlayerId || !incomingPlayerId || outgoingPlayerId === incomingPlayerId) {
+    throw createHttpError(400, 'Choose different outgoing and incoming players');
+  }
+  if (!match[fields.court].includes(outgoingPlayerId)) throw createHttpError(400, 'Outgoing player must be on court');
+  const lineup = lineups.find((candidate) => id(candidate.teamId) === id(payload.teamId));
+  if (!lineup || !ids(lineup.substitutes).includes(incomingPlayerId)) {
+    throw createHttpError(400, 'Incoming player must be a registered substitute');
+  }
+  if (match[fields.court].includes(incomingPlayerId) || match[fields.substituted].includes(incomingPlayerId)) {
+    throw createHttpError(400, 'Incoming player is not eligible for substitution');
+  }
+  match[fields.court] = match[fields.court].map((playerId) => playerId === outgoingPlayerId ? incomingPlayerId : playerId);
+  match[fields.substituted].push(outgoingPlayerId);
+  return {
+    match,
+    event: {
+      type: 'SUBSTITUTION',
+      playerOutIds: [outgoingPlayerId],
+      playerRevivedIds: [incomingPlayerId],
+      description: 'Player substitution',
+      ...scoreChanges(before, match),
+    },
+    playerUpdates: [],
+  };
+};
+
+export const scoringEngine = { startMatch, applyRaid, applyTackle, applyTechnicalPoint, applySubstitution };

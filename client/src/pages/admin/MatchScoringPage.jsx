@@ -21,6 +21,7 @@ const modes = [
   ['bonus', 'bi-plus-circle', 'Bonus'],
   ['touchBonus', 'bi-stars', 'Touch + bonus'],
   ['tackle', 'bi-shield-fill', 'Raider tackled'],
+  ['substitution', 'bi-arrow-left-right', 'Substitute player'],
   ['technical', 'bi-flag-fill', 'Technical point'],
   ['correction', 'bi-pencil-square', 'Correction'],
 ];
@@ -43,6 +44,9 @@ export default function MatchScoringPage() {
   const [correctionTeam, setCorrectionTeam] = useState('');
   const [correctionAmount, setCorrectionAmount] = useState(1);
   const [correctionReason, setCorrectionReason] = useState('');
+  const [substitutionTeam, setSubstitutionTeam] = useState('');
+  const [outgoingPlayerId, setOutgoingPlayerId] = useState('');
+  const [incomingPlayerId, setIncomingPlayerId] = useState('');
   const [preview, setPreview] = useState(null);
   const [pendingAction, setPendingAction] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -57,6 +61,7 @@ export default function MatchScoringPage() {
       setLineups(lineupData.lineups);
       setTechnicalTeam(id(matchData.teamA));
       setCorrectionTeam(id(matchData.teamA));
+      setSubstitutionTeam(id(matchData.teamA));
       setLastEvent(latestEvent);
     } catch (requestError) { setError(apiMessage(requestError)); }
     finally { setLoading(false); }
@@ -102,6 +107,9 @@ export default function MatchScoringPage() {
   const raiders = activePlayers(raidingSide);
   const defenders = activePlayers(defendingSide);
   const selectedRaider = playerMap.get(raiderId);
+  const substitutionSide = substitutionTeam ? sideForTeam(substitutionTeam) : 'A';
+  const substitutionLineup = lineupByTeam.get(substitutionTeam);
+  const eligibleSubstitutes = (substitutionLineup?.substitutes ?? []).filter((player) => !courtIds(substitutionSide).includes(id(player)) && !(match?.[`team${substitutionSide}SubstitutedOutPlayers`] ?? []).map(id).includes(id(player)));
   const timerRemaining = useMemo(() => {
     const timer = match?.timerState;
     const stored = Math.max(0, Number(timer?.remainingMilliseconds) || 0);
@@ -110,11 +118,11 @@ export default function MatchScoringPage() {
   }, [clockNow, match?.timerState]);
 
   const resetSelection = () => {
-    setMode(''); setTouchedIds([]); setTacklerId(''); setAssistIds([]); setTechnicalReason(''); setCorrectionReason(''); setPreview(null); setPendingAction(null); setError('');
+    setMode(''); setTouchedIds([]); setTacklerId(''); setAssistIds([]); setTechnicalReason(''); setCorrectionReason(''); setOutgoingPlayerId(''); setIncomingPlayerId(''); setPreview(null); setPendingAction(null); setError('');
   };
 
   const selectMode = (nextMode) => {
-    setMode(nextMode); setTouchedIds([]); setTacklerId(''); setAssistIds([]); setError(''); setNotice('');
+    setMode(nextMode); setTouchedIds([]); setTacklerId(''); setAssistIds([]); setOutgoingPlayerId(''); setIncomingPlayerId(''); setError(''); setNotice('');
   };
 
   const openStartConfirmation = () => {
@@ -123,7 +131,7 @@ export default function MatchScoringPage() {
   };
 
   const prepareAction = () => {
-    if (!['technical', 'correction'].includes(mode) && !raiderId) { setError('Select the current raider first.'); return; }
+    if (!['technical', 'correction', 'substitution'].includes(mode) && !raiderId) { setError('Select the current raider first.'); return; }
     const raidTeam = teams[raidingSide];
     const defenceTeam = teams[defendingSide];
     let action;
@@ -142,6 +150,11 @@ export default function MatchScoringPage() {
       const allOut = activePlayers(raidingSide).length === 1 ? settings.allOutPoints ?? 2 : 0;
       action = { kind: 'tackle', payload: { raiderId, tacklerId, assistPlayerIds: assistIds } };
       nextPreview = { title: isSuper ? 'Confirm super tackle' : 'Confirm tackle', teamName: defenceTeam.shortName, points: tacklePoints + allOut, details: [{ label: 'Raider out', value: `${selectedRaider.name} #${selectedRaider.jerseyNumber}` }, { label: 'Primary tackler', value: playerMap.get(tacklerId)?.name }, ...(assistIds.length ? [{ label: 'Support', value: assistIds.map((playerId) => playerMap.get(playerId)?.name).join(', ') }] : []), ...(allOut ? [{ label: 'All out', value: `+${allOut}` }] : [])] };
+    } else if (mode === 'substitution') {
+      if (!outgoingPlayerId || !incomingPlayerId) { setError('Choose both the outgoing player and replacement.'); return; }
+      const team = substitutionSide === 'A' ? match.teamA : match.teamB;
+      action = { kind: 'substitute', payload: { teamId: substitutionTeam, outgoingPlayerId, incomingPlayerId } };
+      nextPreview = { title: 'Confirm substitution', teamName: team.shortName, hidePoints: true, buttonLabel: 'Record substitution', details: [{ label: 'Team', value: team.name }, { label: 'Player out', value: playerMap.get(outgoingPlayerId)?.name ?? 'Selected player' }, { label: 'Player in', value: playerMap.get(incomingPlayerId)?.name ?? 'Selected substitute' }] };
     } else if (mode === 'technical') {
       if (!technicalReason.trim()) { setError('Enter a reason for the technical point.'); return; }
       const team = id(match.teamA) === technicalTeam ? match.teamA : match.teamB;
@@ -246,11 +259,13 @@ export default function MatchScoringPage() {
 
           {mode === 'tackle' && <section className="scoring-section result-panel"><div className="scoring-section-heading"><div><h2>Select primary tackler</h2><p>Choose the defender credited with the tackle.</p></div>{settings.superTackleEnabled && defenders.length <= (settings.superTackleThreshold ?? 3) && <strong>SUPER TACKLE</strong>}</div><div className="scoring-player-grid">{defenders.map((player) => <ScoringPlayerCard player={player} key={player._id} selected={tacklerId === player._id} onClick={() => { setTacklerId(player._id); setAssistIds((current) => current.filter((value) => value !== player._id)); }} />)}</div><div className="support-heading"><h3>Supporting defenders</h3><p>Optional. Tap any assisting players.</p></div><div className="scoring-player-grid compact">{defenders.filter((player) => player._id !== tacklerId).map((player) => <ScoringPlayerCard player={player} key={player._id} secondary={assistIds.includes(player._id)} onClick={() => setAssistIds((current) => current.includes(player._id) ? current.filter((value) => value !== player._id) : [...current, player._id])} />)}</div></section>}
 
+          {mode === 'substitution' && <section className="scoring-section result-panel"><div className="scoring-section-heading"><div><h2>Player substitution</h2><p>Choose an on-court player to replace with a registered substitute.</p></div></div><div className="technical-team-choice">{[match.teamA, match.teamB].map((team) => <button className={substitutionTeam === team._id ? 'active' : ''} type="button" key={team._id} onClick={() => { setSubstitutionTeam(team._id); setOutgoingPlayerId(''); setIncomingPlayerId(''); }}>{team.shortName}</button>)}</div><div className="support-heading"><h3>Player out</h3><p>Choose a current on-court player.</p></div><div className="scoring-player-grid compact">{activePlayers(substitutionSide).map((player) => <ScoringPlayerCard player={player} key={player._id} selected={outgoingPlayerId === player._id} onClick={() => setOutgoingPlayerId(player._id)} />)}</div><div className="support-heading"><h3>Player in</h3><p>Only unused registered substitutes can enter.</p></div><div className="scoring-player-grid compact">{eligibleSubstitutes.map((player) => <ScoringPlayerCard player={player} key={player._id} selected={incomingPlayerId === player._id} onClick={() => setIncomingPlayerId(player._id)} />)}</div>{!eligibleSubstitutes.length && <p className="inline-form-error">No eligible substitutes remain for this team.</p>}</section>}
+
           {mode === 'technical' && <section className="scoring-section result-panel"><div className="scoring-section-heading"><div><h2>Technical point</h2><p>Select the team and record the official reason.</p></div></div><div className="technical-team-choice">{[match.teamA, match.teamB].map((team) => <button className={technicalTeam === team._id ? 'active' : ''} type="button" key={team._id} onClick={() => setTechnicalTeam(team._id)}>{team.shortName}</button>)}</div><label className="technical-reason"><span>Reason</span><select value={technicalReason} onChange={(event) => setTechnicalReason(event.target.value)}><option value="">Select reason</option><option>Late entry</option><option>Rule violation</option><option>Official decision</option><option>Other</option></select></label></section>}
 
           {mode === 'correction' && <section className="scoring-section correction-panel"><div className="scoring-section-heading"><div><h2>Official score correction</h2><p>This creates a permanent audit event. A reason is required.</p></div><strong>CONFIRM REQUIRED</strong></div><div className="technical-team-choice">{[match.teamA, match.teamB].map((team) => <button className={correctionTeam === team._id ? 'active' : ''} type="button" key={team._id} onClick={() => setCorrectionTeam(team._id)}>{team.shortName}</button>)}</div><label className="technical-reason"><span>Adjustment</span><select value={correctionAmount} onChange={(event) => setCorrectionAmount(Number(event.target.value))}><option value={1}>+1 point</option><option value={2}>+2 points</option><option value={-1}>-1 point</option><option value={-2}>-2 points</option></select></label><label className="technical-reason"><span>Reason</span><input value={correctionReason} onChange={(event) => setCorrectionReason(event.target.value)} maxLength={160} placeholder="Referee decision or recorded-score error" /></label></section>}
 
-          {mode && <div className="review-action-bar"><button type="button" onClick={prepareAction} disabled={submitting}>{mode === 'empty' ? 'Review empty raid' : 'Review scoring action'}<i className="bi bi-arrow-right" /></button></div>}
+          {mode && <div className="review-action-bar"><button type="button" onClick={prepareAction} disabled={submitting}>{mode === 'substitution' ? 'Review substitution' : mode === 'empty' ? 'Review empty raid' : 'Review scoring action'}<i className="bi bi-arrow-right" /></button></div>}
 
           <section className="last-event"><div><span>Latest action</span><h2>{lastEvent?.description ?? 'No scoring action recorded in this session'}</h2>{lastEvent && <p>{lastEvent.type.replaceAll('_', ' ')} - {lastEvent.teamAPointsChange >= 0 ? '+' : ''}{lastEvent.teamAPointsChange} / {lastEvent.teamBPointsChange >= 0 ? '+' : ''}{lastEvent.teamBPointsChange}</p>}</div><i className="bi bi-clock-history" aria-hidden="true" /></section>
         </div>

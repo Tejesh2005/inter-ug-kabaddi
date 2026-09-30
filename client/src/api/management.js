@@ -41,6 +41,7 @@ export const scoringApi = {
   raid: (matchId, payload) => scoringRequest(http.post(`/matches/${matchId}/raid`, payload)),
   tackle: (matchId, payload) => scoringRequest(http.post(`/matches/${matchId}/tackle`, payload)),
   technicalPoint: (matchId, payload) => scoringRequest(http.post(`/matches/${matchId}/technical-point`, payload)),
+  substitute: (matchId, payload) => scoringRequest(http.post(`/matches/${matchId}/substitute`, payload)),
   correction: (matchId, payload) => scoringRequest(http.post(`/matches/${matchId}/correction`, payload)),
   undo: (matchId, payload) => scoringRequest(http.post(`/matches/${matchId}/undo`, payload)),
   latestEvent: (matchId) => unwrap(http.get(`/matches/${matchId}/events/latest`), 'event'),

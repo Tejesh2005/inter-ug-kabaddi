@@ -45,6 +45,7 @@ export const createManagementRoutes = ({ tournament, team, player, match, lineup
   router.post('/matches/:id/raid', ...protectLineups, validateObjectId(), scoringActions.raid);
   router.post('/matches/:id/tackle', ...protectLineups, validateObjectId(), scoringActions.tackle);
   router.post('/matches/:id/technical-point', ...protectLineups, validateObjectId(), scoringActions.technicalPoint);
+  router.post('/matches/:id/substitute', ...protectLineups, validateObjectId(), scoringActions.substitute);
   router.get('/matches/:id/events/latest', ...protectLineups, validateObjectId(), auditActions.latest);
   router.get('/matches/:id/events', ...protectAudit, validateObjectId(), auditActions.list);
   router.post('/matches/:id/undo', ...protectLineups, validateObjectId(), auditActions.undo);

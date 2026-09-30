@@ -6,7 +6,7 @@ import Player from '../models/Player.js';
 import Tournament from '../models/Tournament.js';
 import { createHttpError } from '../utils/httpError.js';
 import { requireDatabaseConnection } from './databaseGuard.js';
-import { applyRaid, applyTackle, applyTechnicalPoint, startMatch } from './scoringEngine.js';
+import { applyRaid, applySubstitution, applyTackle, applyTechnicalPoint, startMatch } from './scoringEngine.js';
 
 const eventDefaults = {
   raidingTeam: null,
@@ -28,6 +28,7 @@ const matchStateFields = [
   'status', 'currentHalf', 'currentRaidingTeam', 'currentRaider', 'raidNumber',
   'teamAScore', 'teamBScore', 'teamAPlayersOnCourt', 'teamBPlayersOnCourt',
   'teamAOutPlayers', 'teamBOutPlayers', 'teamARevivalQueue', 'teamBRevivalQueue',
+  'teamASubstitutedOutPlayers', 'teamBSubstitutedOutPlayers',
   'timerState', 'startedAt',
 ];
 
@@ -111,5 +112,8 @@ export const scoringService = {
   })),
   technicalPoint: (matchId, payload, adminId) => execute(matchId, payload, adminId, async (context) => applyTechnicalPoint({
     match: context.match, payload,
+  })),
+  substitute: (matchId, payload, adminId) => execute(matchId, payload, adminId, async (context) => applySubstitution({
+    match: context.match, lineups: context.lineups, payload,
   })),
 };

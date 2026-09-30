@@ -46,6 +46,8 @@ const matchSchema = new Schema(
     teamBPlayersOnCourt: playerList,
     teamAOutPlayers: playerList,
     teamBOutPlayers: playerList,
+    teamASubstitutedOutPlayers: playerList,
+    teamBSubstitutedOutPlayers: playerList,
     teamARevivalQueue: playerList,
     teamBRevivalQueue: playerList,
     teamATimeouts: nonNegativeInteger,

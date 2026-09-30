@@ -112,7 +112,7 @@ Detailed architecture, scoring, deployment, and troubleshooting documentation wi
 
 Do not deploy until you have a MongoDB replica set or MongoDB Atlas deployment: match scoring uses transactions and will not work on a standalone MongoDB server.
 
-1. Deploy the API from `server/` using Node.js 20 or the included [server Dockerfile](server/Dockerfile). The root [Procfile](Procfile) supports process-based platforms.
+1. Deploy the API from `server/` using Node.js 20 or the included [production Dockerfile](server/Dockerfile.production). The root [Procfile](Procfile) supports process-based platforms.
 2. Deploy the Vite client as a static site. Set `VITE_API_URL` to `https://api.example.edu/api` and `VITE_SOCKET_URL` to `https://api.example.edu` at build time.
 3. Set the API environment variables below. `CLIENT_URL` must be the exact HTTPS frontend origin. For multiple approved origins, provide a comma-separated list.
 4. Run `npm ci`, `npm test`, and `npm run build` during CI before releasing.
